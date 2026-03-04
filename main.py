@@ -27,15 +27,15 @@ def rodar_teste(entrada_usuario: str):
                 print(f"-> roteando o controle para: [{atualizacao_estado['next_agent']}]")
             estado_final = atualizacao_estado
             
-    print(f"\n[resposta final]: {estado_final.get('final_response')}")
+            if "final_response" in atualizacao_estado:
+                return estado_final.get('final_response')
 
 if __name__ == "__main__":
-    entradas = [
-        "quanto é 15 mais 27?",
-        "qual a previsão do tempo para são paulo?",
-        "por favor, deixe isso tudo em letra maiúscula: eu gosto muito de batatas fritas",
-        "oi, poderia me falar sobre batatas fritas?"
-    ]
+    while True:
+        entrada = input("\nDigite sua mensagem (ou 'sair'): ")
+
+        if entrada.lower() == "sair":
+            break
     
-    for entrada in entradas:
-        rodar_teste(entrada)
+        resposta = rodar_teste(entrada)
+        print(f"\n[resposta final]: {resposta}")

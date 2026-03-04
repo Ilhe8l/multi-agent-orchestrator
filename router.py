@@ -27,6 +27,7 @@ def orchestrator_node(state: MultiAgentState):
                     2. weather: especialista em verificar previsão do tempo
                     3. text: especialista em processamento e formatação de texto
                     4. conversational: use caso não se encaixe nos agentes acima
+                    5. oráculo: Em caso de perguntas que possam ter relação com a Fapes ou que possam ter relação sobre informações sobre editais e processos da Fapes deve direcionar ao node oráculo
 
                     Retorne a intenção selecionada e a instrução clara a ser passada."""
     
@@ -43,20 +44,3 @@ def orchestrator_node(state: MultiAgentState):
         "next_agent": decision.intent,
         "delegation_instruction": decision.delegation_instruction
     }
-
-def conversational_node(state: MultiAgentState):
-    # nó para quando o orquestrador classifica a requisição como "conversational"
-    # não possuí ferramentas
-    # resposta não é enviada para o orquestrador, vai direto para o usuário
-    instruction = state.get("delegation_instruction", "")
-    user_input = state.get("user_input", "")
-    
-    system_prompt = SystemMessage(
-        content="Você é uma assistente de IA prestativa e amigável, responda de forma clara e objetiva."
-    )
-    
-    response = llm.invoke([system_prompt, HumanMessage(content=user_input)])
-    print(f"[agente conversacional] recebeu a instrução: {instruction}")
-    print(f"[agente conversacional] resposta: {response.content}")
-    
-    return {"final_response": response.content}
