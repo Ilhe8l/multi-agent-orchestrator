@@ -5,7 +5,7 @@ class RouterDecision(BaseModel):
     # estrutura de decisão do orquestrador (router)
     # ele analisa a conversa e determina o agente alvo e a instrução clara para ele
 
-    intent: Literal["math", "weather", "text", "conversational"] = Field(
+    intent: Literal["math", "weather", "text", "oraculo", "conversational"] = Field(
         description="Qual é o domínio da requisição do usuário"
     )
     delegation_instruction: str = Field(
