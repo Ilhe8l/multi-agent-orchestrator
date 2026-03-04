@@ -7,7 +7,7 @@ from state import MultiAgentState
 load_dotenv()
 
 llm = ChatOpenAI(
-    model="gpt-4.1-mini",
+    model="gpt-4.1",
     api_key=os.getenv("LLM_API_KEY"),
     temperature=0.0
 )
@@ -28,7 +28,7 @@ def conversational_node(state: MultiAgentState):
                 f"Siga a instrução do orquestrador: {instruction}"
     )
 
-    messages = [system_prompt] #+ history (descomente para passar o histórico)
+    messages = [system_prompt] + history # (descomente para passar o histórico)
     response = llm.invoke(messages)
 
     print(f"[Conversational Agent] Instrução recebida: {instruction}")

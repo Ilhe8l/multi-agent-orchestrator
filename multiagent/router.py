@@ -8,7 +8,7 @@ from models import RouterDecision
 load_dotenv()
 
 llm = ChatOpenAI(
-    model="gpt-4.1-mini",
+    model="gpt-4.1",
     api_key=os.getenv("LLM_API_KEY"),
     temperature=0.0
 )
@@ -36,15 +36,14 @@ def orchestrator_node(state: MultiAgentState):
 
     Importante:
     Os agentes especialistas NÃO possuem memória. 
+    Apenas o agente conversacional tem acesso ao histórico, ao mesmo que você.
+    Toda informação vital para a execução da tarefa deve ser incluída na instrução que você gerar.
     Portanto, toda instrução deve ser autocontida, contendo contexto completo, dados relevantes e objetivo final claramente definido.
 
-    Existem 5 especialistas disponíveis:
 
-    1. math: especialista em operações matemáticas.
-    2. weather: especialista em verificar previsão do tempo.
-    3. text: especialista em processamento e formatação de texto.
-    4. conversational: utilize quando a solicitação não se encaixar nos agentes acima.
-    5. oráculo: utilize em caso de perguntas relacionadas à Fapes, informações sobre editais, processos, chamadas públicas ou qualquer conteúdo institucional relacionado à Fapes.
+    Existem 2 especialistas disponíveis:
+    3. conversational: especialista em processamento e formatação de texto, use quando a tarefa envolver manipulação de linguagem natural, formatação de respostas ou análise de texto.
+    4. oráculo: utilize em caso de perguntas relacionadas à Fapes, informações sobre editais, processos, chamadas públicas ou qualquer conteúdo institucional relacionado à Fapes.
 
     Sua resposta final deve conter apenas:
 
