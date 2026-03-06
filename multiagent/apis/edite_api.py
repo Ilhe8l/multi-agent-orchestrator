@@ -48,6 +48,8 @@ def edite_agent_node(state: MultiAgentState):
             final_content = f"A Edite retornou um erro: {response_data.get('response', 'Erro desconhecido')}"
         else:
             final_content = response_data.get("response", "")
+
+        print("[Edite API] Resposta da Edite: ", final_content)
         return {"messages": [final_content]}
 
     except requests.exceptions.RequestException as e:
