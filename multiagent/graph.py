@@ -5,14 +5,19 @@ from router import orchestrator_node
 from agents.conversational_agent import conversational_node
 from apis.oracle_api import oracle_agent_node
 from apis.edite_api import edite_agent_node
+from langgraph.types import Send
 
-def route_from_orchestrator(state: MultiAgentState) -> Literal["oraculo_api", "edite_api", "conversational_agent"]:
-    intent = state.get("next_agent")
-    if intent == "oraculo":
-        return "oraculo_api"
-    if intent == "edite":
-        return "edite_api"
-    return "conversational_agent"
+def route_from_orchestrator(state: MultiAgentState):
+    # o send permite enviar para múltiplos agentes, e esperar as respostas de todos eles antes de seguir para o próximo nó do grafo (no caso, o agente conversacional)
+    sends = []
+    for call in state["calls"]:
+        if call.intent == "oraculo":
+            sends.append(Send("oraculo_api", {"delegation_instruction": call.delegation_instruction}))
+        elif call.intent == "edite":
+            sends.append(Send("edite_api", {"delegation_instruction": call.delegation_instruction}))
+        elif call.intent == "conversational":
+            sends.append(Send("conversational_agent", {"delegation_instruction": call.delegation_instruction}))
+    return sends
 
 def format_final_output(state: MultiAgentState):
     messages = state.get("messages", [])

@@ -20,52 +20,50 @@ def orchestrator_node(state: MultiAgentState):
 
         Sua função é:
         1. Ler a solicitação do usuário.
-        2. Identificar a intenção principal.
-        3. Selecionar o agente especialista adequado.
-        4. Gerar uma instrução clara e completa para esse agente.
+        2. Identificar todas as intenções presentes na solicitação.
+        3. Para cada intenção, selecionar o agente especialista adequado.
+        4. Gerar uma instrução clara, completa e autocontida para cada agente.
 
         Você NÃO executa tarefas, NÃO utiliza ferramentas e NÃO responde diretamente ao usuário.
-        Sua única função é decidir qual agente deve agir e preparar a instrução.
+        Sua única função é decidir quais agentes devem agir e preparar as instruções.
 
         Sempre considere TODO o histórico da conversa ao tomar a decisão.
 
-        Os agentes especialistas NÃO possuem memória. 
+        Os agentes especialistas NÃO possuem memória.
         Portanto, toda instrução deve ser AUTOCONTIDA e incluir:
         - contexto relevante da conversa
         - informações fornecidas pelo usuário
         - objetivo final da tarefa
 
+        Você pode e deve gerar múltiplas chamadas quando a solicitação envolver tarefas independentes
+        que possam ser executadas em paralelo. O mesmo agente pode ser chamado mais de uma vez
+        se houver consultas distintas e independentes para ele.
+
         Agentes disponíveis:
 
-        1. oraculo  
-        Utilize para consultas e recuperação de dados da base da FAPES.
-        Esse agente realiza consultas SQL e retorna informações sobre:
-        - editais
-        - projetos
-        - bolsistas
-        - processos
-        - dados institucionais da FAPES
+        1. oraculo
+        Utilize para consultar DADOS ESTRUTURADOS armazenados na base interna da FAPES.
+        Esse agente realiza consultas SQL e retorna informações como:
+        - orçamento e valores financeiros de editais e projetos
+        - datas, prazos e status de editais e processos
+        - lista de projetos, bolsistas e instituições vinculadas
+        - dados quantitativos e registros internos da FAPES
 
-        2. edite  
-        Utilize EXCLUSIVAMENTE para responder dúvidas sobre o CONTEÚDO de editais da FAPES, como:
-        - editais abertos, em andamento ou encerrados
-        - regras do edital
-        - requisitos de participação
-        - critérios de avaliação
-        - documentos exigidos
-        - interpretação de itens do edital
-        - links dos editais, anexos e formulários relacionados
+        2. edite
+        Utilize EXCLUSIVAMENTE para responder dúvidas sobre o TEXTO E CONTEÚDO DOCUMENTAL de editais, como:
+        - regras, critérios e requisitos descritos no documento do edital
+        - interpretação de cláusulas e itens do edital
+        - documentos exigidos, anexos e formulários
+        - links e arquivos relacionados ao edital
+        NÃO utilize o edite para buscar valores financeiros, orçamentos, datas ou qualquer dado
+        que esteja armazenado em banco de dados — isso é domínio exclusivo do oraculo.
 
-        3. conversational  
+        3. conversational
         Utilize quando:
-        - for necessário transformar os dados retornados pelos outros agentes em uma resposta clara para o usuário
         - a solicitação não estiver relacionada aos domínios do oraculo ou edite
-        - a tarefa envolver apenas comunicação natural ou reformulação de resposta
-
-        Formato obrigatório da resposta:
-
-        Intenção selecionada: <oraculo | edite | conversational>
-        Instrução para o agente: <instrução clara, completa e autocontida>
+        - a tarefa envolver apenas comunicação natural
+        Não inclua o conversational junto com oraculo ou edite — ele será chamado automaticamente
+        após os outros agentes para consolidar e apresentar os resultados ao usuário.
     """
     
     structured_llm = llm.with_structured_output(RouterDecision, method="function_calling")
@@ -76,7 +74,7 @@ def orchestrator_node(state: MultiAgentState):
     
     decision: RouterDecision = structured_llm.invoke(messages)
     
+    # retorna todas as chamadas do agente roteador
     return {
-        "next_agent": decision.intent,
-        "delegation_instruction": decision.delegation_instruction
+        "calls": decision.calls
     }
