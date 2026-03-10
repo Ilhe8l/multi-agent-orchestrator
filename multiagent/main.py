@@ -17,12 +17,12 @@ load_dotenv()
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
 TTL_CONFIG = {"default_ttl": 5, "refresh_on_read": False}
 
-# Estado global da aplicação
+
 app_state = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Inicializa Redis e grafo UMA VEZ ao subir a aplicação
+
     async with AsyncRedisSaver.from_conn_string(REDIS_URL, ttl=TTL_CONFIG) as _checkpointer:
         await _checkpointer.asetup()
 
@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
     print("[API] Grafo e Redis inicializados.")
     yield
 
-    # Cleanup ao encerrar
+    
     await _checkpointer.__aexit__(None, None, None)
     print("[API] Redis encerrado.")
 
@@ -40,7 +40,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-        allow_origins=["*"],  # origem do seu frontend
+        allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
