@@ -30,11 +30,14 @@ def oracle_agent_node(state: MultiAgentState):
 
         if result.get("type") == "error":
             final_content = f"O Oráculo retornou um erro: {result.get('text')}"
+            sql_used = "Nenhum SQL gerado devido ao erro"
+            text_response = result.get("text", "")
+            data_rows = []  
         else:
             text_response = result.get("text", "")
             sql_used = result.get("sql", "Nenhum SQL gerado")
             data_rows = result.get("data", [])
-            
+
             final_content = (
                 f"{text_response}\n\n"
                 f"SQL utilizado: {sql_used}\n"
@@ -43,7 +46,11 @@ def oracle_agent_node(state: MultiAgentState):
 
         print("[Oráculo API] Resposta do Oráculo: ", final_content)
 
-        return {"messages": [final_content]}
+        return {"messages": [final_content],
+                "graph": data_rows,
+                "sql_used": sql_used,
+                "text_response": text_response
+                }
 
 
     except requests.exceptions.RequestException as e:

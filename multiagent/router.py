@@ -43,11 +43,13 @@ def orchestrator_node(state: MultiAgentState):
 
         1. oraculo
         Utilize para consultar DADOS ESTRUTURADOS armazenados na base interna da FAPES.
+        Caso a solicitação possua múltiplas intenções, gere múltiplas chamadas para o oraculo.
         Esse agente realiza consultas SQL e retorna informações como:
         - orçamento e valores financeiros de editais e projetos
         - datas, prazos e status de editais e processos
         - lista de projetos, bolsistas e instituições vinculadas
         - dados quantitativos e registros internos da FAPES
+
 
         2. edite
         Utilize EXCLUSIVAMENTE para responder dúvidas sobre o TEXTO E CONTEÚDO DOCUMENTAL de editais, como:

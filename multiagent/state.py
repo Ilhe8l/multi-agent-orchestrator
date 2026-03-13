@@ -13,3 +13,7 @@ class MultiAgentState(TypedDict):
     calls: List[AgentCall]
     # resposta final
     final_response: Optional[str]
+    # dados tragos da api do BI (oraculo)
+    graph: Optional[Any]
+    sql_used: Optional[str]
+    text_response: Optional[str]

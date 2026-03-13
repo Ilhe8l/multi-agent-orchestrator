@@ -6,15 +6,16 @@ services:
     container_name: orchestrator_agent
     networks:
       - oraculo-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - REDIS_URL=redis://redis:6379
     env_file:
       - .env
     ports:
-    - "8004:8004"
+      - "8004:8004"
     stdin_open: true
     tty: true
-
 
   edite_agent:
     build:
