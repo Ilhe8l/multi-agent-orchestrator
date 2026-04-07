@@ -16,8 +16,15 @@ def conversational_node(state: MultiAgentState):
     # Nó responsável por tratar mensagens classificadas como 'conversational'.
     # Não utiliza ferramentas.
     # Retorna resposta final diretamente ao usuário.
-    instruction = state.get("delegation_instruction", "")
+    instruction = state.get("delegation_instruction") or ""
     history = state.get("messages", [])
+
+    # Quando vindo do mcp_tool_node, delegation_instruction é None.
+    # Nesse caso, usamos o resultado das mensagens (já no histórico) como contexto.
+    if not instruction and history:
+        # Pega o conteúdo da última mensagem (resultado do MCP)
+        last_msg = history[-1]
+        instruction = last_msg.content if hasattr(last_msg, "content") else str(last_msg)
 
     system_prompt = SystemMessage(
         content=(
@@ -47,10 +54,10 @@ def conversational_node(state: MultiAgentState):
         )
     )
 
-    messages = [system_prompt] + history #(descomente para passar o histórico)
+    messages = [system_prompt] + history
     response = llm.invoke(messages)
 
-    print(f"[Conversational Agent] Instrução recebida: {instruction}")
+    print(f"[Conversational Agent] Instrução recebida: {instruction[:120] if instruction else None}")
     print(f"[Conversational Agent] Resposta gerada: {response.content}")
 
     return {

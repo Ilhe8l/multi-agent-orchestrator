@@ -9,7 +9,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=redis://redis:6379  # hostname = nome do container redis
     env_file:
       - .env
     ports:
@@ -28,6 +28,38 @@ services:
       PYTHONUNBUFFERED: 1
     ports:
       - "8003:8003"
+    env_file:
+      - .env
+    networks:
+      - oraculo-network
+
+  oraculo_mcp:
+    build:
+      context: ./multiagent
+      dockerfile: Dockerfile
+    command: python mcp_servers/oraculo_server.py
+    container_name: oraculo_mcp
+    ports:
+      - "8005:8005"
+    environment:
+      - ORACULO_URL=http://backend:8001
+    env_file:
+      - .env
+    networks:
+      - oraculo-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  edite_mcp:
+    build:
+      context: ./multiagent
+      dockerfile: Dockerfile
+    command: python mcp_servers/edite_server.py
+    container_name: edite_mcp
+    ports:
+      - "8006:8006"
+    environment:
+      - EDITE_URL=http://edite_agent:8003
     env_file:
       - .env
     networks:

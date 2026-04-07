@@ -18,7 +18,23 @@ TTL_CONFIG = {"default_ttl": 5, "refresh_on_read": False}
 
 _checkpointer = None
 _graph = None
+_mcp_tools_loaded = False
 
+from mcp_client import get_mcp_client
+import router
+import graph
+
+async def ensure_mcp_tools():
+    """Carrega as ferramentas MCP na primeira chamada e armazena no router/graph."""
+    global _mcp_tools_loaded
+    if _mcp_tools_loaded:
+        return
+    async with get_mcp_client() as mcp_client:
+        tools = await mcp_client.get_tools()
+        router.mcp_tools = tools
+        graph.mcp_tools = tools
+    _mcp_tools_loaded = True
+    print(f"[Startup] MCP tools carregadas: {[t.name for t in router.mcp_tools]}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,6 +45,7 @@ async def lifespan(app: FastAPI):
         yield
 
 app = FastAPI(lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -42,6 +59,8 @@ class ChatRequest(BaseModel):
 
 
 async def process_message(user_input: str, config: dict):
+    await ensure_mcp_tools()
+
     initial_state = {
         "messages": [HumanMessage(content=user_input)],
         "user_input": user_input,
@@ -59,7 +78,7 @@ async def process_message(user_input: str, config: dict):
     return {
         "type": "success",
         "final_response": final_state.get("final_response"),
-        "text": final_state.get("text_response"),
+        "text": final_state.get("text_response") or final_state.get("final_response"),
         "sql": final_state.get("sql_used"),
         "data": final_state.get("graph"),
     }
@@ -81,4 +100,3 @@ async def health():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8004)
-                

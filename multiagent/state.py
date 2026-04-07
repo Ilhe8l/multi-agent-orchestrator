@@ -17,3 +17,6 @@ class MultiAgentState(TypedDict):
     graph: Optional[Any]
     sql_used: Optional[str]
     text_response: Optional[str]
+    # campos para delegacao MCP
+    delegation_instruction: Optional[str]
+    tool_name: Optional[str]
