@@ -1,16 +1,18 @@
 from pydantic import BaseModel, Field
-from typing import Literal
+from typing import List
 
-class RouterDecision(BaseModel):
-    # estrutura de decisão do orquestrador (router)
-    # ele analisa a conversa e determina o agente alvo e a instrução clara para ele
-
-    intent: Literal["math", "weather", "text", "oraculo", "conversational"] = Field(
-        description="Qual é o domínio da requisição do usuário"
+# classe auxiliar para representar a chamada a um agente específico, incluindo a intenção e as instruções de delegação.
+class AgentCall(BaseModel):
+    intent: str = Field(
+        description="Nome da ferramenta (tool) que deve ser chamada, ou 'conversational' caso NENHUMA ferramenta seja aplicável."
     )
     delegation_instruction: str = Field(
-        description="""Um resumo detalhado e conciso contendo a exata instrução e o contexto necessário para que
-                o agente especialista execute a ferramenta dele e responda a pergunta.
-                Deve ser escrito na forma imperativa (ex: 'Calcule o tempo na cidade de São Paulo' ou 'Some 15 com 27').
-                Se for 'conversational', essa instrução pode ser vazia ou nula."""
+        description="Instrução imperativa e detalhada para o agente especialista."
     )
+
+# classe principal que representa a decisão do roteador, contendo uma lista de chamadas a agentes. Isso permite que o roteador delegue tarefas a múltiplos agentes ou ao mesmo agente várias vezes, se necessário.
+class RouterDecision(BaseModel):
+    calls: List[AgentCall] = Field(
+        description="Lista de chamadas a ferramentas. Pode conter múltiplas chamadas à mesma ferramenta com argumentos diferentes ou chamadas a ferramentas variadas."
+    )
+

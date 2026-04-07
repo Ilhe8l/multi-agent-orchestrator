@@ -8,60 +8,63 @@ from models import RouterDecision
 load_dotenv()
 
 llm = ChatOpenAI(
-    model="gpt-4.1-mini",
+    model="gpt-4o-mini",
     api_key=os.getenv("LLM_API_KEY"),
     temperature=0.0
 )
 
+mcp_tools = []
+
 def orchestrator_node(state: MultiAgentState):
-    user_input = state.get("user_input", "")
+    global mcp_tools
     
-    system_prompt = """
-    Você é o orquestrador central do sistema de agentes.
-    Sua responsabilidade é:
+    tools_desc = "\n".join([f"- {t.name}: {t.description}" for t in mcp_tools]) if mcp_tools else "Nenhuma ferramenta externa disponível."
+    
+    system_prompt = f"""
+        Você é o ORQUESTRADOR central de um sistema multiagente.
 
-    1. Ler e interpretar cuidadosamente a requisição do usuário.
-    2. Identificar a intenção principal da solicitação.
-    3. Selecionar o agente especialista mais adequado.
-    4. Gerar uma instrução objetiva, clara e completa para esse agente.
+        Sua função é:
+        1. Ler a solicitação do usuário.
+        2. Identificar todas as intenções presentes na solicitação.
+        3. Para cada intenção, selecionar a ferramenta especialista adequada.
+        4. Gerar uma instrução clara, completa e autocontida para cada ferramenta.
 
-    Você NÃO executa tarefas diretamente, NÃO utiliza ferramentas e NÃO resolve o problema final. 
-    Sua função é exclusivamente gerenciar o roteamento e a delegação da tarefa.
+        Você NÃO executa tarefas, NÃO utiliza ferramentas nativamente e NÃO responde diretamente ao usuário.
+        Sua única função é decidir quais ferramentas devem agir e preparar as instruções.
 
-    Ao gerar a instrução para o agente especialista:
-    - Considere todo o histórico da conversa.
-    - Extraia e inclua todas as informações relevantes já fornecidas pelo usuário.
-    - Reescreva o contexto de forma clara e estruturada.
-    - Forneça todos os dados necessários para que o agente consiga executar a tarefa sem depender de memória anterior.
+        Sempre considere TODO o histórico da conversa ao tomar a decisão.
 
-    Importante:
-    Os agentes especialistas NÃO possuem memória. 
-    Portanto, toda instrução deve ser autocontida, contendo contexto completo, dados relevantes e objetivo final claramente definido.
+        Os agentes especialistas NÃO possuem memória.
+        Portanto, toda instrução deve ser AUTOCONTIDA e incluir:
+        - contexto relevante da conversa
+        - informações fornecidas pelo usuário
+        - objetivo final da tarefa
+    
+        Você pode e deve gerar múltiplas chamadas quando a solicitação envolver tarefas independentes
+        que possam ser executadas em paralelo. O mesmo agente pode ser chamado mais de uma vez
+        se houver consultas distintas e independentes para ele.
 
-    Existem 5 especialistas disponíveis:
+        Ferramentas externas disponíveis via MCP:
+        {tools_desc}
+        
+        Caso a solicitação possua múltiplas intenções, gere múltiplas chamadas, podendo chamar a mesma ferramenta mais de uma vez ou diferentes ferramentas em paralelo.
 
-    1. math: especialista em operações matemáticas.
-    2. weather: especialista em verificar previsão do tempo.
-    3. text: especialista em processamento e formatação de texto.
-    4. conversational: utilize quando a solicitação não se encaixar nos agentes acima.
-    5. oráculo: utilize em caso de perguntas relacionadas à Fapes, informações sobre editais, processos, chamadas públicas ou qualquer conteúdo institucional relacionado à Fapes.
-
-    Sua resposta final deve conter apenas:
-
-    - Intenção selecionada: <nome_do_agente>
-    - Instrução para o agente: <instrução clara, completa e autocontida>
-
+        Utilize o conversational quando:
+        - a solicitação não estiver relacionada aos domínios do oraculo ou edite
+        - a tarefa envolver apenas comunicação natural
+        Não inclua o conversational junto com oraculo ou edite — ele será chamado automaticamente
+        após os outros agentes para consolidar e apresentar os resultados ao usuário.
     """
     
     structured_llm = llm.with_structured_output(RouterDecision, method="function_calling")
     
     history = state.get("messages", [])
-    
     messages = [SystemMessage(content=system_prompt)] + history
     
     decision: RouterDecision = structured_llm.invoke(messages)
     
+# retorna todas as chamadas do agente roteador
     return {
-        "next_agent": decision.intent,
-        "delegation_instruction": decision.delegation_instruction
+        "calls": decision.calls
     }
+

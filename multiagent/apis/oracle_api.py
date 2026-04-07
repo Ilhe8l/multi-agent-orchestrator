@@ -1,49 +1,82 @@
 import os
 import requests
-from state import MultiAgentState
+from fastmcp import FastMCP
 
-ORACULO_URL = os.getenv("ORACULO_URL", "http://localhost:8001")
+mcp = FastMCP("oraculo-mcp-server")
 
-def oracle_agent_node(state: MultiAgentState):
-    # Este nó é responsável por enviar ao backend Oráculo perguntas relacionadas à Fapes, editais, processos, etc.
-    # Ele funciona apenas como um intermédio, recebendo a pergunta do usuário e retornando a resposta do backend, sem lógica adicional.
-    
-    instruction = state.get("delegation_instruction", "")
+# Se estiver rodando em container e o backend no host → OK
+ORACULO_URL = os.getenv("ORACULO_URL", "http://host.docker.internal:8001")
 
-    payload = {
-        "question": instruction,
-    }
 
-    print(f"[Oráculo API] Enviando pergunta ao Oráculo: {instruction}")
+@mcp.tool()
+def consultar_oraculo(instruction: str) -> str:
+    """
+    Consulta dados estruturados (SQL/BI) da base interna da FAPES.
+    Use para buscar valores financeiros, datas, listas de projetos, bolsistas, etc.
+    """
+
+    payload = {"question": instruction}
+
     try:
-
-        response = requests.post(
+        resp = requests.post(
             f"{ORACULO_URL}/api/chat",
             json=payload,
             timeout=30
         )
+        resp.raise_for_status()
 
-        response.raise_for_status()
+        data = resp.json()
 
-        result = response.json()
-        
+        #  DEBUG (ESSENCIAL)
+        print(" RESPOSTA BRUTA DO ORÁCULO:", data)
 
-        if result.get("type") == "error":
-            final_content = f"O Oráculo retornou um erro: {result.get('text')}"
+        #  Tratamento de erro
+        if data.get("type") == "error":
+            text_response = data.get("text", "")
+            sql_used = None
+            data_rows = []
+
+            final_content = f"❌ Erro do Oráculo:\n{text_response}"
+
         else:
-            text_response = result.get("text", "")
-            sql_used = result.get("sql", "Nenhum SQL gerado")
-            data_rows = result.get("data", [])
-            
-            final_content = (
-                f"{text_response}\n\n"
-                f"SQL utilizado: {sql_used}\n"
-                f"Dados brutos retornados: {data_rows}"
+            text_response = data.get("text", "")
+
+            # Suporte a múltiplos formatos de SQL
+            sql_used = (
+                data.get("sql")
+                or data.get("query")
+                or data.get("generated_sql")
+                or data.get("sql_query")
             )
 
-        return {"messages": [final_content]}
+            data_rows = data.get("data", [])
 
+            # TEXTO FINAL (O MAIS IMPORTANTE)
+            final_content = text_response
+
+            if sql_used:
+                final_content += f"\n\n SQL gerado:\n{sql_used}"
+
+            if data_rows:
+                final_content += f"\n\n Dados retornados:\n{data_rows}"
+
+        # LOG FINAL
+        print("[Oráculo API] Resposta formatada:", final_content)
+
+        # RETORNO (SEM json.dumps !!!)
+        return final_content
 
     except requests.exceptions.RequestException as e:
-        error_msg = f"Houve uma falha de conexão ao consultar a base do Oráculo: {str(e)}"
-        return {"messages": [error_msg]}
+        error_msg = f"❌ Falha de conexão com o Oráculo: {str(e)}"
+        print("[Oráculo API] Erro:", error_msg)
+        return error_msg
+
+
+if __name__ == "__main__":
+    mcp.run(
+        transport="streamable-http",
+        host="0.0.0.0",
+        port=8005,
+        path="/mcp",
+        stateless_http=True
+    )

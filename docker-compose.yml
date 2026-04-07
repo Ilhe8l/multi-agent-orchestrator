@@ -1,34 +1,71 @@
-version: '3.8'
-
 services:
-  redis:
-    image: redis/redis-stack-server:latest
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    networks:
-      - oraculo-network
-
   agent:
     build:
       context: ./multiagent
       dockerfile: Dockerfile
-    depends_on:
-      redis:
-        condition: service_healthy
+    container_name: orchestrator_agent
     networks:
       - oraculo-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=redis://redis:6379  # hostname = nome do container redis
     env_file:
       - .env
+    ports:
+      - "8004:8004"
     stdin_open: true
     tty: true
 
+  edite_agent:
+    build:
+      context: ./edite_agent
+      dockerfile: Dockerfile
+    container_name: edite_agent
+    image: edite_agent:latest
+    restart: unless-stopped
+    environment:
+      PYTHONUNBUFFERED: 1
+    ports:
+      - "8003:8003"
+    env_file:
+      - .env
+    networks:
+      - oraculo-network
+
+  oraculo_mcp:
+    build:
+      context: ./multiagent
+      dockerfile: Dockerfile
+    command: python mcp_servers/oraculo_server.py
+    container_name: oraculo_mcp
+    ports:
+      - "8005:8005"
+    environment:
+      - ORACULO_URL=http://backend:8001
+    env_file:
+      - .env
+    networks:
+      - oraculo-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  edite_mcp:
+    build:
+      context: ./multiagent
+      dockerfile: Dockerfile
+    command: python mcp_servers/edite_server.py
+    container_name: edite_mcp
+    ports:
+      - "8006:8006"
+    environment:
+      - EDITE_URL=http://edite_agent:8003
+    env_file:
+      - .env
+    networks:
+      - oraculo-network
+
 networks:
   oraculo-network:
-    driver: bridge
+    name: oraculo-network
+    external: true
