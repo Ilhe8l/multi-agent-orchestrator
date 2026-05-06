@@ -20,7 +20,7 @@ Quando o frontend envia uma nova mensagem para o agente, a API não aguarda a re
 ---
 
 ## 2. Buscando o Resultado por Polling (`GET /api/result/{job_id}`)
-O frontend faz chamadas periódicas para esta rota passando o `job_id` para verificar o status do processamento. O formato de resposta depende do estado atual do *job*:
+O frontend faz chamadas periódicas de forma automática para esta rota passando o `job_id` para verificar o status do processamento. O formato de resposta depende do estado atual do *job*:
 
 ### A. Enquanto está processando (Pendente)
 ```json
@@ -42,7 +42,7 @@ A API extrai os dados gerados pelo LangGraph e os encapsula no formato abaixo:
 }
 ```
 
-### C. Quando ocorre um Erro
+### C. Em caso de erro
 Se houver uma exceção ou falha durante a execução do agente em background:
 ```json
 {
@@ -54,7 +54,7 @@ Se houver uma exceção ou falha durante a execução do agente em background:
 ---
 
 ## 3. Buscando Histórico do Chat (`GET /api/history/{thread_id}`)
-Se o frontend precisar recuperar o histórico de uma conversa anterior usando o `thread_id`, a rota retorna uma lista de mensagens.
+Se o frontend precisar recuperar o histórico de uma conversa anterior usando o `thread_id`, a rota retorna uma lista de mensagens. Cada usuário deve receber um thread_id.
 
 **Formato da Resposta:**
 ```json
@@ -107,8 +107,25 @@ Caso o frontend use eventos SSE (Server-Sent Events) no lugar de Polling, ele re
    }
    ```
 
----
+## 5. Chamada dos Agentes
 
+Atualmente há dois agentes adicionados ao grafo com tools, permitindo sua modularidade.
+
+### Agente Oráculo
+Consulta dados estruturados (SQL/BI) da base interna da FAPES.
+Use para buscar valores financeiros, datas, listas de projetos, bolsistas, etc.
+
+```env
+ORACULO_URL=http://host.docker.internal:8001
+```
+
+### Agente Edite
+Consulta conteúdo documental de editais (RAG) da FAPES.
+Use para regras, cláusulas, requisitos, anexos e documentos exigidos.
+
+```env
+EDITE_URL=http://localhost:8003
+```
 ## Resumo das Chaves do Payload de Resposta (Sucesso)
 
 | Chave | Origem do Estado (LangGraph) | Descrição |
@@ -119,3 +136,47 @@ Caso o frontend use eventos SSE (Server-Sent Events) no lugar de Polling, ele re
 | `final_response` | `final_response` | O texto de resposta final gerado pelo nó do agente no Langgraph. |
 | `sql` | `sql_used` | A query SQL executada (útil caso o frontend a renderize no modo debug). |
 | `data` | `graph` | Dados tabulares (DataFrames convertidos em JSON) ou dados estruturados (gerados pela tools). |
+
+---
+> **Nota:** os eventos `"start"` e `"pending"` são intermediários e 
+> só aparecem no `/api/stream` (SSE). O `/api/result` retorna 
+> `{"status": "pending"}` enquanto o job não finaliza, independente 
+> de qual evento intermediário o stream já emitiu.
+---
+
+
+
+```mermaid
+graph TD
+    classDef apiNode fill:#e1f5fe,stroke:#03a9f4,stroke-width:2px
+    classDef orchestratorNode fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
+    classDef conversNode fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
+    classDef defaultNode fill:#fff,stroke:#333,stroke-width:1px
+
+    User((Usuário)) -->|POST /api/chat| Server[API FastAPImain.py]
+
+    subgraph LangGraph["Orquestrador Multiagente — Ciclo LangGraph"]
+        START((START)) --> Orch[Nó Orquestradorrouter.py]
+
+        Orch -->|Condicional: oraculo| Oracle[Nó API Oráculooracle_api.py]
+        Orch -->|Condicional: edite| Edite[Nó API Editeedite_api.py]
+        Orch -->|Condicional: conversational| ConvFallback[Nó Agente Conversacional]
+
+        Oracle -->|Dados DB FAPES| ConvFallback
+        Edite -->|Dados Editais| ConvFallback
+
+        ConvFallback -->|Dados Consolidados| OutputFormatter[Nó format_final_outputgraph.py]
+        OutputFormatter --> END((END))
+    end
+
+    class Orch orchestratorNode
+    class Oracle,Edite apiNode
+    class ConvFallback conversNode
+    class OutputFormatter defaultNode
+
+    Server -->|Initial State| START
+    END -->|Final State JSON| Server
+    Server -->|Resposta| User
+
+    Redis[(Redis Checkpointer)] -.->|Persiste Histórico| Server
+```

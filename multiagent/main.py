@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
         )
     except Exception:
         pass
-
+        
     async with AsyncRedisSaver.from_conn_string(REDIS_URL, ttl=TTL_CONFIG) as _checkpointer:
         await _checkpointer.asetup()
         _graph = builder.compile(checkpointer=_checkpointer)
