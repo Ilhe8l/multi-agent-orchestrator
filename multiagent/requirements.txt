@@ -5,3 +5,8 @@ pydantic
 python-dotenv
 redis
 langgraph-checkpoint-redis
+fastapi
+uvicorn
+fastmcp
+langchain-mcp-adapters
+httpx

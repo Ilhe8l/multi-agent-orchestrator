@@ -1,0 +1,53 @@
+[project]
+name = "agents"
+version = "0.1.0"
+description = "Utilitários para agentes"
+requires-python = ">=3.13,<3.14"
+package-mode = false
+dependencies = [
+    "langchain==0.3.27",
+    "langchain-community==0.3.27",
+    "langchain-core==0.3.76",
+    "langchain-openai==0.3.28",
+    "langchain-google-genai==2.1.9",
+    "langchain-redis==0.2.3",
+    "langgraph==0.6.1",
+    "langgraph-checkpoint-redis==0.0.8",
+    "langfuse", 
+    "redis==6.2.0",
+    "psycopg2-binary==2.9.10",
+    "pydantic==2.11.7",
+    "openai==1.98.0",
+    "fastapi",
+    "uvicorn",
+]
+
+# --- Configuração do Ruff (Linter) ---
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+# E = Erros de estilo, F = Erros lógicos (imports não usados, etc)
+select = ["E", "F"]
+# Ignora erro de linha muito longa (opcional, evita chatice com strings longas)
+ignore = ["E501"]
+
+# --- Configuração do Mypy (Type Checker) ---
+[tool.mypy]
+python_version = "3.13"
+# CRUCIAL: Impede erro se uma lib não tiver tipos instalados
+ignore_missing_imports = true
+follow_imports = "silent"
+plugins = ["pydantic.mypy"]
+# Regras permissivas
+disallow_untyped_defs = false 
+check_untyped_defs = true
+# Configurações Estritas
+# Se começar a dar muito erro, mude disallow_untyped_defs para false 
+warn_return_any = false
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
